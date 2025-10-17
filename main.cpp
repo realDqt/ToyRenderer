@@ -38,7 +38,7 @@ int main()
 	Model myModel(filePath);
 
 	// 计算model矩阵
-	Vec3 translate(0.0f, -0.8f, -1.5f);
+	Vec3 translate(0.0f, -0.8f, -1.0f);
 	Vec3 nx(1.0f, 0.0f, 0.0f), ny(0.0f, 1.0f, 0.0f), nz(0.0f, 0.0f, 1.0f);
 	Vec3 scale(1.0f, 1.0f, 1.0f);
 	Mat4 model = Translate(translate) * Rotate(ny, 0.5f);
@@ -81,7 +81,7 @@ int main()
 		// 监听鼠标和键盘操作
 		//camera.Listen(msg, deltaTime, xOffset, yOffset);
 
-		lightPos = Rotate(ny, 0.3f) * Vec4(lightPos, 0.0f);
+		//lightPos = Rotate(ny, 0.3f) * Vec4(lightPos, 0.0f);
 
 		// 构造DepthMap
 		Mat4 view = Camera::LookAt(lightPos, translate, Vec3(0.0f, 1.0f, 0.0f));
@@ -91,7 +91,7 @@ int main()
 
 		// 正式渲染
 		view = camera.GetViewMatrix();
-		//model = Translate(translate) * Rotate(ny, 0.3f) * Translate(-1.0f * translate) * model;
+		model = Translate(translate) * Rotate(ny, 0.3f) * Translate(-1.0f * translate) * model;
 		mvp = projection * view * model;
 		viewPos = camera.GetPosition();
 		screen.RenderModel(model, projection, mvp, myModel, lightPos, viewPos, true);
