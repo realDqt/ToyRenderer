@@ -1,24 +1,93 @@
-# 忽略生成的文件和目录
-bin/
-obj/
+# ==================================
+# C++ CMake 项目 .gitignore
+# ==================================
 
-# 忽略 Visual Studio 项目文件
-*.suo
-*.user
-*.sln.cache
-*.suo
-*.user
-*.suo
-*.user
+# --- 构建目录 ---
+# CMake 常用的构建目录
+/build/
+/Build/
 
-# 忽略临时文件
-[Tt]humbs.db
-[Dd]esktop.ini
+# Visual Studio / VS Code 偏好的构建目录
+/out/
+/install/
+
+# CMake 临时文件和缓存
+/CMakeCache.txt
+/CMakeFiles/
+/cmake_install.cmake
+/CPackConfig.cmake
+/CPackSourceConfig.cmake
+/CTestTestfile.cmake
+/Testing/
+
+# --- IDEs 和 编辑器 ---
+
+# Visual Studio (重要：.vs 目录包含大量用户本地缓存)
+/.vs/
+*.sln
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.vcxproj.prev
+*.VC.db
+
+# Visual Studio Code
+# 保留 settings.json, launch.json, extensions.json 以便团队共享
+# 但排除用户本地的工作区存储
+.vscode/*
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/extensions.json
+!.vscode/c_cpp_properties.json
+
+# CLion
+/.idea/
+*.iws
+
+# --- 编译产物 ---
+# 可执行文件、库和对象文件
+*.exe
+*.dll
+*.so
+*.dylib
+*.lib
+*.a
+*.obj
+*.o
+*.pdb
+*.ilk
+*.exp
+*.pch
+*.gch
+
+# --- 操作系统特定文件 ---
+
+# Windows
+Thumbs.db
+ehthumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.lnk
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Linux
+*~
+.Trash-*
+
+# --- 其他 ---
+# 日志文件
 *.log
-*.vscode
+*.tmp
+*.temp
 
-x64/
-.vs/
-Project1.sln
-Project1.vcxproj
-Project1.vcxproj.filters
+# 包管理器 (例如 vcpkg 或 conan)
+/vcpkg/
+/vcpkg_installed/
