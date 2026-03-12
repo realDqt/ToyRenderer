@@ -7,7 +7,8 @@
 ## Feature
 
 - Blin-Phong shading
+- Scanline rasterization
+- Bounding box rasterization
 - Backface Culling
 - Shadow map
 - PCF
-- SSAA
