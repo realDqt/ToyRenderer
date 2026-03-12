@@ -217,8 +217,8 @@ void Screen::RasterizeTriangleMSAA(Triangle& triangle, Color* pointColors)
 	}
 }
 
-// 光栅化三角形，正式进行光照计算
-void Screen::RasterizeTriangle(const Mat4& p, const Mat4& normalMatrix, Image* diffuseMap, Triangle& triangle, const Vec3& lightPos, const Vec3& viewPos, bool shadow)
+// 屏幕空间光栅化三角形，正式进行光照计算(包围盒版本)
+void Screen::RasterizeTriangleBoundingBox(const Mat4& p, const Mat4& normalMatrix, Image* diffuseMap, Triangle& triangle, const Vec3& lightPos, const Vec3& viewPos, bool shadow)
 {
 	//for (int i = 0; i < 3; ++i)std::cout << triangle[i] << std::endl;
 	// 计算三角形包围盒
@@ -261,6 +261,97 @@ void Screen::RasterizeTriangle(const Mat4& p, const Mat4& normalMatrix, Image* d
 	}
 }
 
+// 屏幕空间光栅化三角形，正式进行光照计算 (扫描线版本)
+void Screen::RasterizeTriangleScanline(const Mat4& p, const Mat4& normalMatrix, Image* diffuseMap, Triangle& triangle, const Vec3& lightPos, const Vec3& viewPos, bool shadow)
+{
+	// 1. 获取三角形的三个顶点，并按照 Y 坐标从小到大进行排序
+	// 排序后保证：v0.y < v1.y < v2.y
+	auto v0 = triangle[0];
+	auto v1 = triangle[1];
+	auto v2 = triangle[2];
+
+	if (v0.Y() > v1.Y()) std::swap(v0, v1);
+	if (v0.Y() > v2.Y()) std::swap(v0, v2);
+	if (v1.Y() > v2.Y()) std::swap(v1, v2);
+
+	int y0 = std::round(v0.Y());
+	int y1 = std::round(v1.Y());
+	int y2 = std::round(v2.Y());
+
+	int total_height = y2 - y0;
+	// 如果总高度为 0，说明这是一条水平线（退化三角形），直接丢弃不渲染
+	if (total_height == 0) return;
+
+	// 2. 逐行扫描：从最低点 y0 一直扫描到最高点 y2
+	for (int y = y0; y <= y2; ++y) {
+		// 视口外裁剪，避免越界
+		if (!InRange(y, 0, height - 1)) continue;
+
+		// 判断当前扫描线是处于三角形的“下半部分”(v0 到 v1) 还是“上半部分”(v1 到 v2)
+		bool second_half = y > y1 || y1 == y0;
+		int segment_height = second_half ? (y2 - y1) : (y1 - y0);
+
+		// 计算当前 Y 在整个三角形高度 (alpha) 以及在当前半段高度 (beta) 中的比例
+		float alpha = (float)(y - y0) / total_height;
+		float beta = (segment_height == 0) ? 1.0f : (float)(y - (second_half ? y1 : y0)) / segment_height;
+
+		// 动态计算当前扫描线与三角形左右两边的交点 X 坐标
+		// xA 是与“长边”(v0 -> v2) 的交点
+		int xA = std::round(v0.X() + (v2.X() - v0.X()) * alpha);
+		// xB 是与“短边”(v0 -> v1 或 v1 -> v2) 的交点
+		int xB = second_half ?
+			std::round(v1.X() + (v2.X() - v1.X()) * beta) :
+			std::round(v0.X() + (v1.X() - v0.X()) * beta);
+
+		int x_left = std::min(xA, xB) - 1;
+		int x_right = std::max(xA, xB) + 1;
+
+		// 3. 仅仅在当前扫描线确定的 [x_left, x_right] 有效区间内进行片元处理
+		for (int x = x_left; x <= x_right; ++x) {
+			// 视口外裁剪
+			if (!InRange(x, 0, width - 1)) continue;
+
+			// 计算重心坐标 (用于属性插值)
+			Vec3 bary = triangle.Barycentric(Vec2(x, y));
+
+			const float EPS = 1e-5f;
+
+			// 放宽判定条件
+			if (!InRange(bary.X(), -EPS, 1.0f + EPS) ||
+				!InRange(bary.Y(), -EPS, 1.0f + EPS) ||
+				!InRange(bary.Z(), -EPS, 1.0f + EPS)) {
+				continue;
+			}
+
+			// 深度测试
+			float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
+
+			if (!InRange(z, -1.0f, 1.0f)) continue;
+
+			int idx = (height - y - 1) * width + x;
+			assert(idx >= 0 && idx < width * height);
+
+			// Z 越大越靠近相机
+			if (z < zBuffer[idx]) continue;
+
+			// 更新 zBuffer
+			zBuffer[idx] = z;
+
+			// 光照计算
+			Color color(0.0f);
+			if (shadow) {
+				color = BlinPhongShadow(*this, p, normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+			}
+			else {
+				color = BlinPhong(normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+			}
+
+			// 着色
+			SetPixel(x, y, color);
+		}
+	}
+}
+
 // 绘制模型
 void Screen::RenderModel(const Mat4& m, const Mat4& p, const Mat4& mvp, Model& model, const Vec3& lightPos, const Camera& camera, bool shadow)
 {
@@ -297,7 +388,7 @@ void Screen::RenderModel(const Mat4& m, const Mat4& p, const Mat4& mvp, Model& m
 		Vec3 cameraFront = camera.GetFront();
 		if (Dot(planeNormal, cameraFront) > 0.f) continue;
 		// 光栅化
-		RasterizeTriangle(p, normalMatrix, diffuseMap, triangle, lightPos, camera.GetPosition(), shadow);
+		RasterizeTriangleScanline(p, normalMatrix, diffuseMap, triangle, lightPos, camera.GetPosition(), shadow);
 
 		// 释放内存
 		delete[] points;

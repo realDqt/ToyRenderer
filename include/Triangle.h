@@ -25,7 +25,7 @@ public:
 	Vec3 GetPlaneNormal()const;										   // 获取三角形面片的法向量
 	const Vec4& operator[](int idx)const;
 private:
-	Vec4 points[3];                                                    // 顶点坐标
+	Vec4 points[3];                                                    // 屏幕坐标
 	Vec4 worldPoints[3];                                               // 世界坐标
 	Vec4 oriPoints[3];                                                 // 最初的顶点坐标
 	Vec2 texCoords[3];                                                 // 纹理坐标
