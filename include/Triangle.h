@@ -21,7 +21,8 @@ public:
 	Vec4* GetWorldPoints();                                            // 获取各顶点世界坐标
 	Vec3* GetNormals();                                                // 获取各顶点法向量
 	Vec2* GetTexCoords();                                              // 获取各顶点纹理坐标
-	Vec4& operator[](int idx);
+	Vec4& operator[](int idx);                                         
+	Vec3 GetPlaneNormal()const;										   // 获取三角形面片的法向量
 	const Vec4& operator[](int idx)const;
 private:
 	Vec4 points[3];                                                    // 顶点坐标

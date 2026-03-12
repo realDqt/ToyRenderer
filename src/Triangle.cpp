@@ -152,3 +152,27 @@ Vec2* Triangle::GetTexCoords()
 	//std::cout << "GetTexCoords texCoords[0]: " << texCoords[0] << std::endl;
 	return texCoords;
 }
+
+// 获取三角形面片的法向量
+Vec3 Triangle::GetPlaneNormal() const
+{
+	Vec4 v1 = worldPoints[1] - worldPoints[0];
+	Vec4 v2 = worldPoints[2] - worldPoints[1];
+
+	float x = v1.Y() * v2.Z() - v1.Z() * v2.Y();
+	float y = v1.Z() * v2.X() - v1.X() * v2.Z();
+	float z = v1.X() * v2.Y() - v1.Y() * v2.X();
+	float length = std::sqrt(x * x + y * y + z * z);
+	if (length > 1e-6f)
+	{
+		x /= length;
+		y /= length;
+		z /= length;
+	}
+	else
+	{
+		// 面积退化为0的三角形，返回一个默认法线或保持为0
+		x = 0.0f; y = 0.0f; z = 0.0f;
+	}
+	return Vec3(x, y, z);
+}

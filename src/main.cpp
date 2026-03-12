@@ -93,8 +93,7 @@ int main()
 		view = camera.GetViewMatrix();
 		model = Translate(translate) * Rotate(ny, 0.3f) * Translate(-1.0f * translate) * model;
 		mvp = projection * view * model;
-		viewPos = camera.GetPosition();
-		screen.RenderModel(model, projection, mvp, myModel, lightPos, viewPos, true);
+		screen.RenderModel(model, projection, mvp, myModel, lightPos, camera, true);
 
 		FlushBatchDraw();
 

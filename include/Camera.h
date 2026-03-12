@@ -13,6 +13,7 @@ public:
 	void Listen(ExMessage* msg, float deltaTime, float xOffset, float yOffset); // 监听外部事件
 	Vec3& GetPosition();                                                        // 获取摄像机位置
 	const Vec3& GetPosition()const;                                             // 获取摄像机位置
+	const Vec3& GetFront()const;                                                // 获取摄像机前方
 	Mat4 static LookAt(const Vec3& position, const Vec3& center, const Vec3& worldUp); // 计算view矩阵
 private:
 	void UpdateCameraVectors();                                                 // 根据yaw和pitch，更新front、up和right

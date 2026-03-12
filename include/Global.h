@@ -10,8 +10,8 @@
 #include "Camera.h"
 #include "Screen.h"
 
-class Screen;
-class Camera;
+//class Screen;
+//class Camera;
 
 const float INF = 3.40282e+38;
 const float PI = 3.1415926f;

@@ -153,3 +153,9 @@ const Vec3& Camera::GetPosition()const
 {
 	return position;
 }
+
+// 获取摄像机前方
+const Vec3& Camera::GetFront()const
+{
+	return front;
+}

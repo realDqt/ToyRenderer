@@ -262,7 +262,7 @@ void Screen::RasterizeTriangle(const Mat4& p, const Mat4& normalMatrix, Image* d
 }
 
 // 绘制模型
-void Screen::RenderModel(const Mat4& m, const Mat4& p, const Mat4& mvp, Model& model, const Vec3& lightPos, const Vec3& viewPos, bool shadow)
+void Screen::RenderModel(const Mat4& m, const Mat4& p, const Mat4& mvp, Model& model, const Vec3& lightPos, const Camera& camera, bool shadow)
 {
 	int nFaces = model.NumOfFaces();
 	Image* diffuseMap = model.GetDiffuseMap();
@@ -292,8 +292,12 @@ void Screen::RenderModel(const Mat4& m, const Mat4& p, const Mat4& mvp, Model& m
 		// 坐标变换
 		triangle.Transform(mvp, width, height);
 
+		// 背面剔除
+		Vec3 planeNormal = triangle.GetPlaneNormal();
+		Vec3 cameraFront = camera.GetFront();
+		if (Dot(planeNormal, cameraFront) > 0.f) continue;
 		// 光栅化
-		RasterizeTriangle(p, normalMatrix, diffuseMap, triangle, lightPos, viewPos, shadow);
+		RasterizeTriangle(p, normalMatrix, diffuseMap, triangle, lightPos, camera.GetPosition(), shadow);
 
 		// 释放内存
 		delete[] points;
