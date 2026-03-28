@@ -439,7 +439,7 @@ void Screen::RenderModel(const Mat4& m, const Mat4& p, const Mat4& mvp, Model& m
 		Vec3 cameraFront = camera.GetFront();
 		if (Dot(planeNormal, cameraFront) > 0.f) continue;
 		// Rasterize the triangle
-		RasterizeTriangleBoundingBox(p, normalMatrix, diffuseMap, triangle, lightPos, camera.GetPosition(), shadow);
+		RasterizeTriangleScanline(p, normalMatrix, diffuseMap, triangle, lightPos, camera.GetPosition(), shadow);
 
 		// Release temporary memory
 		delete[] points;
