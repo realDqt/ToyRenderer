@@ -238,9 +238,7 @@ void Screen::RasterizeTriangleBoundingBox(const Mat4& p, const Mat4& normalMatri
 			if (!ssaaEnabled) {
 				// Compute barycentric coordinates
 				Vec3 bary = triangle.Barycentric(Vec2(x + .5f, y + .5f));
-				// Check whether the point is inside the triangle
-				if (!InRange(bary.X(), 0.0f, 1.0f) || !InRange(bary.Y(), 0.0f, 1.0f) || !InRange(bary.Z(), 0.0f, 1.0f))
-					continue;
+				if(!IsInsideTriangle(bary))continue;
 				// Depth test
 				float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
 				// Check whether the point is inside the screen volume
