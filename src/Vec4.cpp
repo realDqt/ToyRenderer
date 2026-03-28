@@ -1,6 +1,6 @@
-#include "Vec4.h"
+ï»¿#include "Vec4.h"
 
-// Ä¬ÈÏ¹¹Ôìº¯Êı
+// Default constructor
 Vec4::Vec4()
 {
 	this->x = this->y = this->z = this->w = 0.0f;
@@ -22,7 +22,7 @@ Vec4::Vec4(Vec3 v, float w)
 	this->w = w;
 }
 
-// ¿½±´¹¹Ôìº¯Êı
+// Copy constructor
 Vec4::Vec4(const Vec4& rhs)
 {
 	this->x = rhs.x;
@@ -52,7 +52,7 @@ float Vec4::W()const
 	return w;
 }
 
-// »ñÈ¡xyz·ÖÁ¿¹¹³ÉµÄVec3
+// Get a Vec3 built from the xyz components
 Vec3 Vec4::XYZ()const
 {
 	return Vec3(x, y, z);
@@ -100,38 +100,38 @@ const float& Vec4::operator[](int idx)const
 	else return w;
 }
 
-// Êä³öÔËËã·ûÖØÔØ
+// Stream output operator
 std::ostream& operator<<(std::ostream& out, const Vec4& v)
 {
 	out << v[0] << " " << v[1] << " " << v[2] << " " << v[3];
 	return out;
 }
 
-// ÏòÁ¿¼Ó·¨
+// Vector addition
 Vec4 operator+(const Vec4& a, const Vec4& b)
 {
 	Vec4 res(a.X() + b.X(), a.Y() + b.Y(), a.Z() + b.Z(), a.W() + b.W());
 	return res;
 }
-// ÏòÁ¿¼õ·¨
+// Vector subtraction
 Vec4 operator-(const Vec4& a, const Vec4& b)
 {
 	Vec4 res(a.X() - b.X(), a.Y() - b.Y(), a.Z() - b.Z(), a.W() - b.W());
 	return res;
 }
-// ÏòÁ¿Êı³Ë
+// Scalar multiplication
 Vec4 operator*(float k, const Vec4& v)
 {
 	Vec4 res(k * v.X(), k * v.Y(), k * v.Z(), k * v.W());
 	return res;
 }
-// ÏòÁ¿Êı³ı
+// Scalar division
 Vec4 operator/(const Vec4& v, float k)
 {
 	Vec4 res(v.X() / k, v.Y() / k, v.Z() / k, v.W() / k);
 	return res;
 }
-// ÏòÁ¿¶ÔÓ¦·ÖÁ¿Ïà³Ë
+// Component-wise multiplication
 Vec4 operator*(const Vec4& a, const Vec4& b)
 {
 	Vec4 res(1.0f);

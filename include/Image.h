@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #include "Color.h"
 #include "Vec2.h"
 #include <easyx.h>
@@ -7,8 +7,8 @@ class Image {
 public:
 	Image(const char* filePath);
 	~Image();
-	Color GetPixel(float u, float v); // »ñÈ¡Ö¸¶¨Î»ÖÃµÄÑÕÉ«
-	Color GetPixel(Vec2 uv);          // »ñÈ¡Ö¸¶¨Î»ÖÃµÄÑÕÉ«
+	Color GetPixel(float u, float v); // Get the color at the given UV
+	Color GetPixel(Vec2 uv);          // Get the color at the given UV
 private:
 	IMAGE* img;
 };

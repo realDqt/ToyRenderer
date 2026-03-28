@@ -1,14 +1,14 @@
-#include "Triangle.h"
+ï»¿#include "Triangle.h"
 #include "Global.h"
 #include <assert.h>
 #include <iostream>
 
-// Ä¬ÈÏ¹¹Ôìº¯Êý
+// Default constructor
 Triangle::Triangle()
 {
 }
 
-// ¿½±´¹¹Ôìº¯Êý
+// Copy constructor
 Triangle::Triangle(Triangle& rhs)
 {
 	for (int i = 0; i < 3; ++i) {
@@ -71,15 +71,15 @@ const Vec4& Triangle::operator[](int idx)const
 
 Vec3 Triangle::Barycentric(Vec2 point)
 {
-	// ¹éÒ»»¯Æë´Î·ÖÁ¿
+	// Normalize the homogeneous coordinate
 	for (int i = 0; i < 3; ++i)points[i] = points[i] / points[i].W();
 
-	// »ñÈ¡¶¥µã×ø±ê
+	// Read the vertex coordinates
 	float x = point.X(), y = point.Y();
 	float xa = points[0].X(), xb = points[1].X(), xc = points[2].X();
 	float ya = points[0].Y(), yb = points[1].Y(), yc = points[2].Y();
 
-	// ¼ÆËãÖØÐÄ×ø±ê
+	// Compute barycentric coordinates
 	float alpha = -(x - xb) * (yc - yb) + (y - yb) * (xc - xb);
 	alpha /= -(xa - xb) * (yc - yb) + (ya - yb) * (xc - xb);
 
@@ -91,10 +91,10 @@ Vec3 Triangle::Barycentric(Vec2 point)
 	return Vec3(alpha, beta, gamma);
 }
 
-// Íê³ÉMVP±ä»»¡¢Í¸ÊÓ³ý·¨ºÍÊÓ¿Ú±ä»»
+// Apply MVP, perspective divide, and viewport transform
 void Triangle::Transform(const Mat4& mvp, int width, int height, bool print)
 {
-	// mvp±ä»»
+	// Apply the MVP transform
 	if (print)std::cout << "after mvp: " << std::endl;
 	for (int i = 0; i < 3; ++i) {
 		points[i] = mvp * oriPoints[i];
@@ -103,7 +103,7 @@ void Triangle::Transform(const Mat4& mvp, int width, int height, bool print)
 	if (print)std::cout << std::endl;
 
 	
-	// Í¸ÊÓ³ý·¨
+	// Perform perspective divide
 	if (print)std::cout << "after perspective divide: " << std::endl;
 	for (int i = 0; i < 3; ++i) {
 		assert(!FloatEqual(points[i].W(), 0.0f));
@@ -113,7 +113,7 @@ void Triangle::Transform(const Mat4& mvp, int width, int height, bool print)
 	if(print)std::cout << std::endl;
 	
 
-	// ÊÓ¿Ú±ä»»
+	// Apply viewport transform
 	Vec3 scale(width / 2.0f, height / 2.0f, 1.0f);
 	Vec3 translate(width / 2.0f, height / 2.0f, 0.0f);
 	Mat4 viewport = Translate(translate) * Scale(scale);
@@ -125,7 +125,7 @@ void Triangle::Transform(const Mat4& mvp, int width, int height, bool print)
 	if(print)std::cout << std::endl;
 }
 
-// ¼ÆËã¸÷¶¥µãÊÀ½ç×ø±ê
+// Compute vertex positions in world space
 void Triangle::CalcWorldPoints(const Mat4& model)
 {
 	for (int i = 0; i < 3; ++i) {
@@ -133,27 +133,27 @@ void Triangle::CalcWorldPoints(const Mat4& model)
 	}
 }
 
-// »ñÈ¡¸÷¶¥µãÊÀ½ç×ø±ê
+// Get vertex positions in world space
 Vec4* Triangle::GetWorldPoints()
 {
 	return worldPoints;
 }
 
-// »ñÈ¡¸÷¶¥µã·¨ÏòÁ¿
+// Get vertex normals
 Vec3* Triangle::GetNormals()
 {
 	//std::cout << "GetNormals: " << normals[0] << std::endl;
 	return normals;
 }
 
-// »ñÈ¡¸÷¶¥µãÎÆÀí×ø±ê
+// Get vertex texture coordinates
 Vec2* Triangle::GetTexCoords()
 {
 	//std::cout << "GetTexCoords texCoords[0]: " << texCoords[0] << std::endl;
 	return texCoords;
 }
 
-// »ñÈ¡Èý½ÇÐÎÃæÆ¬µÄ·¨ÏòÁ¿
+// Get the triangle face normal
 Vec3 Triangle::GetPlaneNormal() const
 {
 	Vec4 v1 = worldPoints[1] - worldPoints[0];
@@ -171,7 +171,7 @@ Vec3 Triangle::GetPlaneNormal() const
 	}
 	else
 	{
-		// Ãæ»ýÍË»¯Îª0µÄÈý½ÇÐÎ£¬·µ»ØÒ»¸öÄ¬ÈÏ·¨Ïß»ò±£³ÖÎª0
+		// Degenerate triangle: fall back to a zero normal
 		x = 0.0f; y = 0.0f; z = 0.0f;
 	}
 	return Vec3(x, y, z);

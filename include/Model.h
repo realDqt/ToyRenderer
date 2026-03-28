@@ -1,23 +1,23 @@
-#pragma once
+ï»¿#pragma once
 #include "Vec2.h"
 #include "Vec3.h"
 #include "Image.h"
 #include <vector>
 class Model {
 public:
-	Model(const char* filePath);         // ¸ù¾İÎÄ¼şÂ·¾¶¼ÓÔØÄ£ĞÍ
+	Model(const char* filePath);         // Load a model from a file path
 	~Model(); 
-	int NumOfVertices();                 // ¶¥µãÊı
-	int NumOfFaces();                    // ÃæÊı
-	Vec3 Vertex(int idx);                // Ë÷ÒıÎªidxµÄÎ»ÖÃ×ø±ê
-	Vec3 Normal(int idx);                // Ë÷ÒıÎªidxµÄ·¨ÏòÁ¿
-	Vec2 TexCoord(int idx);              // Ë÷ÒıÎªidxµÄÎÆÀí×ø±ê
-	Vec3 Vertex(int iFace, int iVertex); // µÚiFace¸öÃæµÄµÚiVertex¸ö¶¥µãµÄ¸÷Ë÷Òı
-	Image* GetDiffuseMap();              // »ñÈ¡Âş·´ÉäÌùÍ¼
+	int NumOfVertices();                 // Get the number of vertices
+	int NumOfFaces();                    // Get the number of faces
+	Vec3 Vertex(int idx);                // Get the vertex position at idx
+	Vec3 Normal(int idx);                // Get the normal at idx
+	Vec2 TexCoord(int idx);              // Get the texture coordinate at idx
+	Vec3 Vertex(int iFace, int iVertex); // Get the indexed vertex triplet for a face vertex
+	Image* GetDiffuseMap();              // Get the diffuse texture
 private:
-	std::vector<Vec3> vertices;           // ¶¥µãÎ»ÖÃ×ø±ê       
-	std::vector<Vec3> normals;            // ¶¥µã·¨ÏòÁ¿
-	std::vector<Vec2> texCoords;          // ¶¥µãÎÆÀí×ø±ê
-	std::vector<std::vector<Vec3>> faces; // Ã¿¸öÃæµÄÃ¿¸ö¶¥µãµÄÎ»ÖÃ¡¢ÎÆÀíºÍ·¨ÏßµÄË÷Òı
-	Image* diffuseMap;                    // Âş·´ÉäÌùÍ¼
+	std::vector<Vec3> vertices;           // Vertex positions
+	std::vector<Vec3> normals;            // Vertex normals
+	std::vector<Vec2> texCoords;          // Vertex texture coordinates
+	std::vector<std::vector<Vec3>> faces; // Position/UV/normal indices for each face vertex
+	Image* diffuseMap;                    // Diffuse texture
 };

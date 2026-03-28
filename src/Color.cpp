@@ -1,8 +1,8 @@
-#include "Color.h"
+ï»¿#include "Color.h"
 #include "Global.h"
 
 
-// Ä¬ÈÏ¹¹Ôìº¯Êı
+// Default constructor
 Color::Color()
 {
 	this->r = this->g = this->b = this->a = 0.0f;
@@ -22,7 +22,7 @@ Color::Color(float r, float a)
 	this->a = a;
 }
 
-// ¿½±´¹¹Ôìº¯Êı
+// Copy constructor
 Color::Color(const Color& rhs)
 {
 	this->r = rhs.r;
@@ -31,7 +31,7 @@ Color::Color(const Color& rhs)
 	this->a = rhs.a;
 }
 
-// ×ª»»º¯Êı
+// Conversion constructor
 Color::Color(const Vec3& rhs, float a)
 {
 	this->r = rhs.X();
@@ -85,7 +85,7 @@ void Color::SetA(float a)
 	this->a = a;
 }
 
-// ¸³ÖµÔËËã·ûÖØÔØ
+// Assignment operator
 Color& Color::operator=(const Color& rhs)
 {
 	r = rhs.r;
@@ -111,33 +111,33 @@ const float& Color::operator[](int idx)const
 	else return a;
 }
 
-// ÏòÁ¿¼Ó·¨
+// Vector addition
 Color operator+(const Color& a, const Color& b)
 {
 	return Color(a.R() + b.R(), a.G() + b.G(), a.B() + b.B(), a.A() + b.A());
 }
-// ÏòÁ¿¼õ·¨
+// Vector subtraction
 Color operator-(const Color& a, const Color& b)
 {
 	return Color(a.R() - b.R(), a.G() - b.G(), a.B() - b.B(), a.A() - b.A());
 }
-// ÏòÁ¿Êı³Ë
+// Scalar multiplication
 Color operator*(float k, const Color& c)
 {
 	return Color(k * c.R(), k * c.G(), k * c.B(), k * c.A());
 }
-// ÏòÁ¿Êı³ı
+// Scalar division
 Color operator/(const Color& c, float k)
 {
 	return Color(c.R() / k, c.G() / k, c.B() / k, c.A() / k);
 }
-// Êä³öÔËËã·ûÖØÔØ
+// Stream output operator
 std::ostream& operator<<(std::ostream& out, const Color& color)
 {
 	out << color.R() << " " << color.G() << " " << color.B();
 	return out;
 }
-// ÑÕÉ«¶ÔÓ¦·ÖÁ¿Ïà³Ë
+// Component-wise color multiplication
 Color operator*(const Color& a, const Color& b)
 {
 	Color res(1.0f);

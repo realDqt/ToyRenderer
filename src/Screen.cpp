@@ -1,34 +1,62 @@
-#include "Screen.h"
+ï»¿#include "Screen.h"
 #include "Global.h"
 #include <assert.h>
 #include <cstring>
 #include <algorithm>
 #include <iostream>
+
+namespace {
+constexpr int kSsaaSampleCount = 4;
+constexpr float kBarycentricEpsilon = 1e-5f;
+const Vec2 kSsaaSampleOffsets[kSsaaSampleCount] = {
+	Vec2(-0.25f, 0.25f),
+	Vec2(0.25f, 0.25f),
+	Vec2(0.25f, -0.25f),
+	Vec2(-0.25f, -0.25f)
+};
+
+bool IsInsideTriangle(const Vec3& bary)
+{
+	return InRange(bary.X(), -kBarycentricEpsilon, 1.0f + kBarycentricEpsilon) &&
+		InRange(bary.Y(), -kBarycentricEpsilon, 1.0f + kBarycentricEpsilon) &&
+		InRange(bary.Z(), -kBarycentricEpsilon, 1.0f + kBarycentricEpsilon);
+}
+}
+
 Screen::Screen(int width, int height, int depth, Color bgColor)
 {
 	this->width = width;
 	this->height = height;
 	this->depth = depth;
 	this->bgColor = bgColor;
+	this->ssaaEnabled = true;
 	
-	// ÎªzBufferÉêÇëÄÚ´æ
+	// Allocate memory for the z-buffer
 	zBuffer = new float[width * height];
-	// ÎªÉî¶ÈÌùÍ¼ÉêÇëÄÚ´æ
+	// Allocate memory for the depth map
 	depthMap = new float[width * height];
-	// ³õÊ¼»¯Îª×îÔ¶Öµ
+	ssaaDepthBuffer = new float[width * height * kSsaaSampleCount];
+	ssaaColorBuffer = new Color[width * height * kSsaaSampleCount];
+	// Initialize to the farthest depth
 	for (int i = 0; i < width * height; ++i)depthMap[i] = zBuffer[i] = -INF;
+	for (int i = 0; i < width * height * kSsaaSampleCount; ++i) {
+		ssaaDepthBuffer[i] = -INF;
+		ssaaColorBuffer[i] = bgColor;
+	}
 }
 
 Screen::~Screen()
 {
 	delete[] zBuffer;
 	delete[] depthMap;
+	delete[] ssaaDepthBuffer;
+	delete[] ssaaColorBuffer;
 }
 
 void Screen::Create()
 {
 	initgraph(width, height);
-	// ´Ó[0, 1]Ó³ÉäÖÁ[0, 255]
+	// Map [0, 1] to [0, 255]
 	int r = static_cast<int>(bgColor.R() * 255);
 	int g = static_cast<int>(bgColor.G() * 255);
 	int b = static_cast<int>(bgColor.B() * 255);
@@ -39,6 +67,16 @@ void Screen::Create()
 void Screen::Close()
 {
 	closegraph();
+}
+
+void Screen::SetSSAAEnabled(bool enabled)
+{
+	ssaaEnabled = enabled;
+}
+
+bool Screen::IsSSAAEnabled() const
+{
+	return ssaaEnabled;
 }
 
 int Screen::GetWidth()const
@@ -56,11 +94,31 @@ float* Screen::GetDepthMap()const
 	return depthMap;
 }
 
-// »ñÈ¡Ö¸¶¨Î»ÖÃµÄÑÕÉ«
+int Screen::PixelIndex(int x, int y) const
+{
+	return (height - y - 1) * width + x;
+}
+
+int Screen::SampleIndex(int x, int y, int sampleIdx) const
+{
+	return PixelIndex(x, y) * kSsaaSampleCount + sampleIdx;
+}
+
+void Screen::ResolveSsaaPixel(int x, int y)
+{
+	Color color(0.0f, 0.0f, 0.0f, 0.0f);
+	for (int i = 0; i < kSsaaSampleCount; ++i) {
+		color = color + ssaaColorBuffer[SampleIndex(x, y, i)];
+	}
+	SetPixel(x, y, color / static_cast<float>(kSsaaSampleCount));
+}
+
+
+// Get the color at the given pixel
 Color Screen::GetPixel(int x, int y)
 {
 	COLORREF tem = getpixel(x, height - y);
-	// ´Ó[0, 255]Ó³ÉäÖÁ[0, 1]
+	// Map [0, 255] to [0, 1]
 	float r = static_cast<float>(GetRValue(tem) / 255.0f);
 	float g = static_cast<float>(GetGValue(tem) / 255.0f);
 	float b = static_cast<float>(GetBValue(tem) / 255.0f);
@@ -68,24 +126,24 @@ Color Screen::GetPixel(int x, int y)
 	return res;
 }
 
-// ½«Ö¸¶¨Î»ÖÃÉèÖÃÎªÖ¸¶¨ÑÕÉ«
+// Set the color at the given pixel
 void Screen::SetPixel(int x, int y, Color color)
 {
-	// ´Ó[0, 1]Ó³ÉäÖÁ[0, 255]
+	// Map [0, 1] to [0, 255]
 	int r = static_cast<int>(color.R() * 255);
 	int g = static_cast<int>(color.G() * 255);
 	int b = static_cast<int>(color.B() * 255);
 	putpixel(x, height - y, RGB(r, g, b));
 }
 
-// ¹âÕ¤»¯Èı½ÇĞÎ£¬Èı½ÇĞÎµÄ¶¥µã×ø±êÊÇÆÁÄ»×ø±ê
+// Rasterize a triangle whose vertices are already in screen space
 void Screen::RasterizeTriangle(Triangle& triangle, Color* pointColors)
 {
 
 	//std::cout << "In Screen!" << std::endl;
 	//for (int i = 0; i < 3; ++i)std::cout << triangle[i] << std::endl;
 	//std::cout << std::endl;
-	// ¼ÆËãÈı½ÇĞÎ°üÎ§ºĞ
+	// Compute the triangle bounding box
 	Vec2 bboxmin(INF, INF);
 	Vec2 bboxmax(-INF, -INF);
 	for (int i = 0; i < 3; ++i) {
@@ -97,37 +155,37 @@ void Screen::RasterizeTriangle(Triangle& triangle, Color* pointColors)
 	}
 	//std::cout << "minx: " << bboxmin.X() << " miny: " << bboxmin.Y() << std::endl;
 	//std::cout << "maxx: " << bboxmax.X() << " maxy: " << bboxmax.Y() << std::endl;
-	// Æ«ÒÆÁ¿Êı×é
+	// Subsample offsets
 	float offsetX[4] = { -0.25f, 0.25f, 0.25f, -0.25f };
 	float offsetY[4] = { 0.25f, 0.25f, -0.25f, -0.25f };
-	// ±éÀú°üÎ§ºĞÖĞµÄÃ¿Ò»¸öÏñËØ
+	// Traverse each pixel in the bounding box
 	for (int x = bboxmin.X(); x <= bboxmax.X(); ++x) {
 		for (int y = bboxmin.Y(); y <= bboxmax.Y(); ++y) {
-			// ¼ÆËãÖØĞÄ×ø±ê
+			// Compute barycentric coordinates
 			Vec3 bary = triangle.Barycentric(Vec2(x, y));
-			// ÅĞ¶ÏÊÇ·ñÔÚÈı½ÇĞÎÄÚ²¿
+			// Check whether the point is inside the triangle
 			if (!InRange(bary.X(), 0.0f, 1.0f) || !InRange(bary.Y(), 0.0f, 1.0f) || !InRange(bary.Z(), 0.0f, 1.0f))continue;
-			// ²åÖµ¼ÆËãÉî¶È
+			// Interpolate depth
 			float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
-			// ÅĞ¶ÏÊÇ·ñÔÚÆÁÄ»ÄÚ²¿
+			// Check whether the point is inside the screen volume
 			if (!InRange(z, -1.0, 1.0f))continue;
-			// Éî¶È²âÊÔ
+			// Depth test
 			int idx = (height - y - 1) * width + x;
 			if (z < zBuffer[idx])continue;
-			// ¸üĞÂÉî¶È»º³å
+			// Update the z-buffer
 			zBuffer[idx] = z;
-			// ²åÖµ¼ÆËãÑÕÉ«
+			// Interpolate the color
 			Color color = bary.X() * pointColors[0] + bary.Y() * pointColors[1] + bary.Z() * pointColors[2];
-			// ×ÅÉ«
+			// Shade the pixel
 			SetPixel(x, y, color);
 		}
 	}
 }
 
-// ¹âÕ¤»¯Èı½ÇĞÎ£¬¹¹ÔìdepthMap
+// Rasterize a triangle into the depth map
 void Screen::RasterizeTriangleDepthMap(Triangle& triangle)
 {
-	// ¼ÆËãÈı½ÇĞÎ°üÎ§ºĞ
+	// Compute the triangle bounding box
 	Vec2 bboxmin(INF, INF);
 	Vec2 bboxmax(-INF, -INF);
 	for (int i = 0; i < 3; ++i) {
@@ -137,91 +195,31 @@ void Screen::RasterizeTriangleDepthMap(Triangle& triangle)
 		bboxmax.SetX(std::max(bboxmax.X(), triangle[i].X()));
 		bboxmax.SetY(std::max(bboxmax.Y(), triangle[i].Y()));
 	}
-	// ±éÀú°üÎ§ºĞÖĞµÄÃ¿Ò»¸öÏñËØ
+	// Traverse each pixel in the bounding box
 	for (int x = bboxmin.X(); x <= bboxmax.X(); ++x) {
 		for (int y = bboxmin.Y(); y <= bboxmax.Y(); ++y) {
-			// ¼ÆËãÖØĞÄ×ø±ê
+			// Compute barycentric coordinates
 			Vec3 bary = triangle.Barycentric(Vec2(x, y));
-			// ÅĞ¶ÏÊÇ·ñÔÚÈı½ÇĞÎÄÚ²¿
+			// Check whether the point is inside the triangle
 			if (!InRange(bary.X(), 0.0f, 1.0f) || !InRange(bary.Y(), 0.0f, 1.0f) || !InRange(bary.Z(), 0.0f, 1.0f))continue;
-			// ²åÖµ¼ÆËãÉî¶È
+			// Interpolate depth
 			float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
-			// ÅĞ¶ÏÊÇ·ñÔÚÆÁÄ»ÄÚ²¿
+			// Check whether the point is inside the screen volume
 			if (!InRange(z, -1.0, 1.0f))continue;
-			// Éî¶È²âÊÔ
+			// Depth test
 			int idx = (height - y - 1) * width + x;
 			if (z < depthMap[idx])continue;
-			// ¸üĞÂÉî¶È»º³å
+			// Update the depth map
 			depthMap[idx] = z;
 		}
 	}
 }
 
-// MSAA
-void Screen::RasterizeTriangleMSAA(Triangle& triangle, Color* pointColors)
-{
-	//std::cout << "In Screen!" << std::endl;
-	//for (int i = 0; i < 3; ++i)std::cout << triangle[i] << std::endl;
-	//std::cout << std::endl;
-	// ¼ÆËãÈı½ÇĞÎ°üÎ§ºĞ
-	Vec2 bboxmin(INF, INF);
-	Vec2 bboxmax(-INF, -INF);
-	for (int i = 0; i < 3; ++i) {
-		bboxmin.SetX(std::min(bboxmin.X(), triangle[i].X()));
-		bboxmin.SetY(std::min(bboxmin.Y(), triangle[i].Y()));
-
-		bboxmax.SetX(std::max(bboxmax.X(), triangle[i].X()));
-		bboxmax.SetY(std::max(bboxmax.Y(), triangle[i].Y()));
-	}
-	//std::cout << "minx: " << bboxmin.X() << " miny: " << bboxmin.Y() << std::endl;
-	//std::cout << "maxx: " << bboxmax.X() << " maxy: " << bboxmax.Y() << std::endl;
-	// Æ«ÒÆÁ¿Êı×é
-	float offsetX[4] = { -0.25f, 0.25f, 0.25f, -0.25f };
-	float offsetY[4] = { 0.25f, 0.25f, -0.25f, -0.25f };
-	// ±éÀú°üÎ§ºĞÖĞµÄÃ¿Ò»¸öÏñËØ
-	for (int x = bboxmin.X(); x <= bboxmax.X(); ++x) {
-		for (int y = bboxmin.Y(); y <= bboxmax.Y(); ++y) {
-			// ÅĞ¶ÏÊÇ·ñÔÚÆÁÄ»ÄÚ²¿
-			if (!InRange(x, 0, width - 1) || !InRange(y, 0, height - 1))continue;
-			// Éî¶È²âÊÔ
-			// ¼ÆËãÖØĞÄ×ø±ê
-			Vec3 bary = triangle.Barycentric(Vec2(x, y));
-			float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
-			// ÅĞ¶ÏÊÇ·ñÔÚÆÁÄ»ÄÚ²¿
-			if (!InRange(z, -1.0, 1.0f))continue;
-			// ¶şÎ¬×ø±ê×ª»»ÖÁÒ»Î¬×ø±ê£¬×¢Òâ·´×ªyÖá
-			int idx = (height - y - 1) * width + x;
-			assert(idx >= 0 && idx < width * height);
-			if (z < zBuffer[idx])continue;
-			// ¸üĞÂzBuffer
-			zBuffer[idx] = z;
-
-			// ¶àÖØ²ÉÑù¿¹¾â³İ
-			Color color(0.0f, 0.0f, 0.0f, 1.0f);
-			for (int i = 0; i < 4; ++i) {
-				// ¼ÆËãÆ«ÒÆºóµÄ×ø±ê
-				float nx = static_cast<float>(x) + offsetX[i];
-				float ny = static_cast<float>(y) + offsetY[i];
-				// ¼ÆËãÖØĞÄ×ø±ê
-				Vec3 bary = triangle.Barycentric(Vec2(nx, ny));
-				// ÅĞ¶ÏÊÇ·ñÔÚÈı½ÇĞÎÄÚ²¿
-				if (!InRange(bary.X(), 0.0f, 1.0f) || !InRange(bary.Y(), 0.0f, 1.0f) || !InRange(bary.Z(), 0.0f, 1.0f))
-					continue;
-				// ²åÖµ¼ÆËãÑÕÉ«
-				Color sampleColor = bary.X() * pointColors[0] + bary.Y() * pointColors[1] + bary.Z() * pointColors[2];
-				// ÀÛ¼ÓÖÁcolor
-				color = color + 0.25 * sampleColor;
-			}
-			if(color != Color(0.0f, 0.0f, 0.0f, 1.0f))SetPixel(x, y, color);
-		}
-	}
-}
-
-// ÆÁÄ»¿Õ¼ä¹âÕ¤»¯Èı½ÇĞÎ£¬ÕıÊ½½øĞĞ¹âÕÕ¼ÆËã(°üÎ§ºĞ°æ±¾)
+// Rasterize and shade a triangle in screen space using a bounding box
 void Screen::RasterizeTriangleBoundingBox(const Mat4& p, const Mat4& normalMatrix, Image* diffuseMap, Triangle& triangle, const Vec3& lightPos, const Vec3& viewPos, bool shadow)
 {
 	//for (int i = 0; i < 3; ++i)std::cout << triangle[i] << std::endl;
-	// ¼ÆËãÈı½ÇĞÎ°üÎ§ºĞ
+	// Compute the triangle bounding box
 	Vec2 bboxmin(INF, INF);
 	Vec2 bboxmax(-INF, -INF);
 	for (int i = 0; i < 3; ++i) {
@@ -235,37 +233,73 @@ void Screen::RasterizeTriangleBoundingBox(const Mat4& p, const Mat4& normalMatri
 	
 	for (int x = bboxmin.X(); x <= bboxmax.X(); ++x) {
 		for (int y = bboxmin.Y(); y <= bboxmax.Y(); ++y) {
-			// ÅĞ¶ÏÊÇ·ñÔÚÆÁÄ»ÄÚ²¿
+			// Check whether the pixel is inside the screen
 			if (!InRange(x, 0, width - 1) || !InRange(y, 0, height - 1))continue;
-			// ¼ÆËãÖØĞÄ×ø±ê
-			Vec3 bary = triangle.Barycentric(Vec2(x, y));
-			// ÅĞ¶ÏÊÇ·ñÔÚÈı½ÇĞÎÄÚ²¿
-			if (!InRange(bary.X(), 0.0f, 1.0f) || !InRange(bary.Y(), 0.0f, 1.0f) || !InRange(bary.Z(), 0.0f, 1.0f))
+			if (!ssaaEnabled) {
+				// Compute barycentric coordinates
+				Vec3 bary = triangle.Barycentric(Vec2(x + .5f, y + .5f));
+				// Check whether the point is inside the triangle
+				if (!InRange(bary.X(), 0.0f, 1.0f) || !InRange(bary.Y(), 0.0f, 1.0f) || !InRange(bary.Z(), 0.0f, 1.0f))
+					continue;
+				// Depth test
+				float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
+				// Check whether the point is inside the screen volume
+				if (!InRange(z, -1.0, 1.0f))continue;
+				int idx = (height - y - 1) * width + x;
+				assert(idx >= 0 && idx < width * height);
+				if (z < zBuffer[idx])continue;
+				// Update the z-buffer
+				zBuffer[idx] = z;
+				// Evaluate the lighting
+				Color color(0.0f);
+				if (shadow)color = BlinPhongShadow(*this, p, normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+				else color = BlinPhong(normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+				// Shade the pixel
+				SetPixel(x, y, color);
 				continue;
-			// Éî¶È²âÊÔ
-			float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
-			// ÅĞ¶ÏÊÇ·ñÔÚÆÁÄ»ÄÚ²¿
-			if (!InRange(z, -1.0, 1.0f))continue;
-			int idx = (height - y - 1) * width + x;
-			assert(idx >= 0 && idx < width * height);
-			if (z < zBuffer[idx])continue;
-			// ¸üĞÂzBuffer
-			zBuffer[idx] = z;
-			// ¹âÕÕ¼ÆËã
-			Color color(0.0f);
-			if (shadow)color = BlinPhongShadow(*this, p, normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
-			else color = BlinPhong(normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
-			// ×ÅÉ«
-			SetPixel(x, y, color);
+			}
+			
+			bool pixelUpdated = false;
+			for (int sample = 0; sample < kSsaaSampleCount; ++sample) {
+				Vec2 samplePoint(
+					static_cast<float>(x + .5f) + kSsaaSampleOffsets[sample].X(),
+					static_cast<float>(y + .5f) + kSsaaSampleOffsets[sample].Y()
+				);
+				Vec3 bary = triangle.Barycentric(samplePoint);
+				if (!IsInsideTriangle(bary)) continue;
+
+				float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
+				if (!InRange(z, -1.0f, 1.0f)) continue;
+
+				int sampleIdx = SampleIndex(x, y, sample);
+				assert(sampleIdx >= 0 && sampleIdx < width * height * kSsaaSampleCount);
+				if (z < ssaaDepthBuffer[sampleIdx]) continue;
+
+				ssaaDepthBuffer[sampleIdx] = z;
+
+				Color color(0.0f);
+				if (shadow) {
+					color = BlinPhongShadow(*this, p, normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+				}
+				else {
+					color = BlinPhong(normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+				}
+				ssaaColorBuffer[sampleIdx] = color;
+				pixelUpdated = true;
+			}
+
+			if (pixelUpdated) {
+				ResolveSsaaPixel(x, y);
+			}
 		}
 	}
 }
 
-// ÆÁÄ»¿Õ¼ä¹âÕ¤»¯Èı½ÇĞÎ£¬ÕıÊ½½øĞĞ¹âÕÕ¼ÆËã (É¨ÃèÏß°æ±¾)
+// Rasterize and shade a triangle in screen space using scanlines
 void Screen::RasterizeTriangleScanline(const Mat4& p, const Mat4& normalMatrix, Image* diffuseMap, Triangle& triangle, const Vec3& lightPos, const Vec3& viewPos, bool shadow)
 {
-	// 1. »ñÈ¡Èı½ÇĞÎµÄÈı¸ö¶¥µã£¬²¢°´ÕÕ Y ×ø±ê´ÓĞ¡µ½´ó½øĞĞÅÅĞò
-	// ÅÅĞòºó±£Ö¤£ºv0.y < v1.y < v2.y
+	// 1. Get the three triangle vertices and sort them by y
+	// After sorting we have v0.y < v1.y < v2.y
 	auto v0 = triangle[0];
 	auto v1 = triangle[1];
 	auto v2 = triangle[2];
@@ -279,26 +313,26 @@ void Screen::RasterizeTriangleScanline(const Mat4& p, const Mat4& normalMatrix, 
 	int y2 = std::round(v2.Y());
 
 	int total_height = y2 - y0;
-	// Èç¹û×Ü¸ß¶ÈÎª 0£¬ËµÃ÷ÕâÊÇÒ»ÌõË®Æ½Ïß£¨ÍË»¯Èı½ÇĞÎ£©£¬Ö±½Ó¶ªÆú²»äÖÈ¾
+	// A total height of 0 means the triangle is degenerate, so skip it
 	if (total_height == 0) return;
 
-	// 2. ÖğĞĞÉ¨Ãè£º´Ó×îµÍµã y0 Ò»Ö±É¨Ãèµ½×î¸ßµã y2
+	// 2. Sweep scanlines from the lowest y0 to the highest y2
 	for (int y = y0; y <= y2; ++y) {
-		// ÊÓ¿ÚÍâ²Ã¼ô£¬±ÜÃâÔ½½ç
+		// Clip against the viewport to avoid out-of-range access
 		if (!InRange(y, 0, height - 1)) continue;
 
-		// ÅĞ¶Ïµ±Ç°É¨ÃèÏßÊÇ´¦ÓÚÈı½ÇĞÎµÄ¡°ÏÂ°ë²¿·Ö¡±(v0 µ½ v1) »¹ÊÇ¡°ÉÏ°ë²¿·Ö¡±(v1 µ½ v2)
+		// Decide whether the current scanline lies on the lower or upper half
 		bool second_half = y > y1 || y1 == y0;
 		int segment_height = second_half ? (y2 - y1) : (y1 - y0);
 
-		// ¼ÆËãµ±Ç° Y ÔÚÕû¸öÈı½ÇĞÎ¸ß¶È (alpha) ÒÔ¼°ÔÚµ±Ç°°ë¶Î¸ß¶È (beta) ÖĞµÄ±ÈÀı
+		// Compute the interpolation factors along the full height and the current segment
 		float alpha = (float)(y - y0) / total_height;
 		float beta = (segment_height == 0) ? 1.0f : (float)(y - (second_half ? y1 : y0)) / segment_height;
 
-		// ¶¯Ì¬¼ÆËãµ±Ç°É¨ÃèÏßÓëÈı½ÇĞÎ×óÓÒÁ½±ßµÄ½»µã X ×ø±ê
-		// xA ÊÇÓë¡°³¤±ß¡±(v0 -> v2) µÄ½»µã
+		// Compute the intersections with the two active edges
+		// xA lies on the long edge (v0 -> v2)
 		int xA = std::round(v0.X() + (v2.X() - v0.X()) * alpha);
-		// xB ÊÇÓë¡°¶Ì±ß¡±(v0 -> v1 »ò v1 -> v2) µÄ½»µã
+		// xB lies on the short edge (v0 -> v1 or v1 -> v2)
 		int xB = second_half ?
 			std::round(v1.X() + (v2.X() - v1.X()) * beta) :
 			std::round(v0.X() + (v1.X() - v0.X()) * beta);
@@ -306,53 +340,72 @@ void Screen::RasterizeTriangleScanline(const Mat4& p, const Mat4& normalMatrix, 
 		int x_left = std::min(xA, xB) - 1;
 		int x_right = std::max(xA, xB) + 1;
 
-		// 3. ½ö½öÔÚµ±Ç°É¨ÃèÏßÈ·¶¨µÄ [x_left, x_right] ÓĞĞ§Çø¼äÄÚ½øĞĞÆ¬Ôª´¦Àí
+		// 3. Process fragments only inside the valid [x_left, x_right] interval
 		for (int x = x_left; x <= x_right; ++x) {
-			// ÊÓ¿ÚÍâ²Ã¼ô
+			// Clip against the viewport
 			if (!InRange(x, 0, width - 1)) continue;
 
-			// ¼ÆËãÖØĞÄ×ø±ê (ÓÃÓÚÊôĞÔ²åÖµ)
-			Vec3 bary = triangle.Barycentric(Vec2(x, y));
+			if (!ssaaEnabled) {
+				Vec3 bary = triangle.Barycentric(Vec2(static_cast<float>(x), static_cast<float>(y)));
+				if (!IsInsideTriangle(bary)) continue;
 
-			const float EPS = 1e-5f;
+				float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
+				if (!InRange(z, -1.0f, 1.0f)) continue;
 
-			// ·Å¿íÅĞ¶¨Ìõ¼ş
-			if (!InRange(bary.X(), -EPS, 1.0f + EPS) ||
-				!InRange(bary.Y(), -EPS, 1.0f + EPS) ||
-				!InRange(bary.Z(), -EPS, 1.0f + EPS)) {
+				int idx = PixelIndex(x, y);
+				assert(idx >= 0 && idx < width * height);
+				if (z < zBuffer[idx]) continue;
+
+				zBuffer[idx] = z;
+
+				Color color(0.0f);
+				if (shadow) {
+					color = BlinPhongShadow(*this, p, normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+				}
+				else {
+					color = BlinPhong(normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+				}
+				SetPixel(x, y, color);
 				continue;
 			}
 
-			// Éî¶È²âÊÔ
-			float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
+			bool pixelUpdated = false;
+			for (int sample = 0; sample < kSsaaSampleCount; ++sample) {
+				Vec2 samplePoint(
+					static_cast<float>(x) + kSsaaSampleOffsets[sample].X(),
+					static_cast<float>(y) + kSsaaSampleOffsets[sample].Y()
+				);
+				Vec3 bary = triangle.Barycentric(samplePoint);
+				if (!IsInsideTriangle(bary)) continue;
 
-			if (!InRange(z, -1.0f, 1.0f)) continue;
+				float z = bary.X() * triangle[0].Z() + bary.Y() * triangle[1].Z() + bary.Z() * triangle[2].Z();
+				if (!InRange(z, -1.0f, 1.0f)) continue;
 
-			int idx = (height - y - 1) * width + x;
-			assert(idx >= 0 && idx < width * height);
+				int sampleIdx = SampleIndex(x, y, sample);
+				assert(sampleIdx >= 0 && sampleIdx < width * height * kSsaaSampleCount);
+				if (z < ssaaDepthBuffer[sampleIdx]) continue;
 
-			// Z Ô½´óÔ½¿¿½üÏà»ú
-			if (z < zBuffer[idx]) continue;
+				ssaaDepthBuffer[sampleIdx] = z;
 
-			// ¸üĞÂ zBuffer
-			zBuffer[idx] = z;
-
-			// ¹âÕÕ¼ÆËã
-			Color color(0.0f);
-			if (shadow) {
-				color = BlinPhongShadow(*this, p, normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+				Color color(0.0f);
+				if (shadow) {
+					color = BlinPhongShadow(*this, p, normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+				}
+				else {
+					color = BlinPhong(normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
+				}
+				ssaaColorBuffer[sampleIdx] = color;
+				pixelUpdated = true;
 			}
-			else {
-				color = BlinPhong(normalMatrix, diffuseMap, triangle, bary, lightPos, viewPos);
-			}
 
-			// ×ÅÉ«
-			SetPixel(x, y, color);
+			if (pixelUpdated) {
+				ResolveSsaaPixel(x, y);
+			}
 		}
 	}
 }
 
-// »æÖÆÄ£ĞÍ
+// Render a model
 void Screen::RenderModel(const Mat4& m, const Mat4& p, const Mat4& mvp, Model& model, const Vec3& lightPos, const Camera& camera, bool shadow)
 {
 	int nFaces = model.NumOfFaces();
@@ -362,7 +415,7 @@ void Screen::RenderModel(const Mat4& m, const Mat4& p, const Mat4& mvp, Model& m
 	Mat4 normalMatrix = m.Inverse().Transpose();
 	//std::cout << "RenderModel normalMatrix: " << std::endl << normalMatrix << std::endl;
 	for (int i = 0; i < nFaces; ++i) {
-		// ¹¹ÔìÈı½ÇĞÎ
+		// Build the triangle data
 		Vec4* points = new Vec4[3];
 		Vec2* texCoords = new Vec2[3];
 		Vec3* normals = new Vec3[3];
@@ -380,24 +433,24 @@ void Screen::RenderModel(const Mat4& m, const Mat4& p, const Mat4& mvp, Model& m
 		Triangle triangle(points, texCoords, normals);
 		triangle.CalcWorldPoints(m);
 		
-		// ×ø±ê±ä»»
+		// Transform the triangle
 		triangle.Transform(mvp, width, height);
 
-		// ±³ÃæÌŞ³ı
+		// Back-face culling
 		Vec3 planeNormal = triangle.GetPlaneNormal();
 		Vec3 cameraFront = camera.GetFront();
 		if (Dot(planeNormal, cameraFront) > 0.f) continue;
-		// ¹âÕ¤»¯
-		RasterizeTriangleScanline(p, normalMatrix, diffuseMap, triangle, lightPos, camera.GetPosition(), shadow);
+		// Rasterize the triangle
+		RasterizeTriangleBoundingBox(p, normalMatrix, diffuseMap, triangle, lightPos, camera.GetPosition(), shadow);
 
-		// ÊÍ·ÅÄÚ´æ
+		// Release temporary memory
 		delete[] points;
 		delete[] texCoords;
 		delete[] normals;
 	}
 }
 
-// »æÖÆÔ­Ê¼Ä£ĞÍ
+// Render the original model
 void Screen::RenderModel(Model& model)
 {
 	int nFaces = model.NumOfFaces();
@@ -412,40 +465,40 @@ void Screen::RenderModel(Model& model)
 	}
 
 	for (int i = 0; i < nFaces; ++i) {
-		// ¹¹ÔìÈı½ÇĞÎ
+		// Build the triangle data
 		Vec4* points = new Vec4[3];
 		Vec2* texCoords = new Vec2[3];
 		for (int j = 0; j < 3; ++j) {
 			Vec3 idx = model.Vertex(i, j);
 			for (int k = 0; k < 3; ++k)points[j][k] = model.Vertex(idx[0])[k];
 			points[j][3] = 1.0f;
-			// Ó³ÉäÖÁÆÁÄ»×ø±ê
+			// Map the model to screen space
 			points[j][0] = (points[j][0] - xl) / (xr - xl) * width;
 			points[j][1] = (points[j][1] - yl) / (yr - yl) * height;
 			texCoords[j] = model.TexCoord(idx[1]);
 		}
 		Triangle triangle(points, texCoords);
 
-		// ¹âÕ¤»¯
+		// Rasterize the triangle
 		Color* pointColors = new Color[3];
 		for (int j = 0; j < 3; ++j) {
 			pointColors[j] = model.GetDiffuseMap()->GetPixel(texCoords[j]);
 		}
 		RasterizeTriangle(triangle, pointColors);
 
-		// ÊÍ·ÅÄÚ´æ
+		// Release temporary memory
 		delete[] points;
 		delete[] texCoords;
 		delete[] pointColors;
 	}
 }
 
-// ¹âÔ´ÊÓ½ÇäÖÈ¾£¬¹¹ÔìdepthMap
+// Render from the light view to construct the depth map
 void Screen::ConstructDepthMap(const Mat4& m, const Mat4& mvp, Model& model)
 {
 	int nFaces = model.NumOfFaces();
 	for (int i = 0; i < nFaces; ++i) {
-		// ¹¹ÔìÈı½ÇĞÎ
+		// Build the triangle data
 		Vec4* points = new Vec4[3];
 		Vec2* texCoords = new Vec2[3];
 		Vec3* normals = new Vec3[3];
@@ -459,13 +512,13 @@ void Screen::ConstructDepthMap(const Mat4& m, const Mat4& mvp, Model& model)
 		Triangle triangle(points, texCoords, normals);
 		triangle.CalcWorldPoints(m);
 
-		// ×ø±ê±ä»»
+		// Transform the triangle
 		triangle.Transform(mvp, width, height);
 
-		// ¹âÕ¤»¯£¬¹¹ÔìdepthMap
+		// Rasterize the triangle into the depth map
 		RasterizeTriangleDepthMap(triangle);
 
-		// ÊÍ·ÅÄÚ´æ
+		// Release temporary memory
 		delete[] points;
 		delete[] texCoords;
 		delete[] normals;
@@ -480,14 +533,19 @@ void Screen::ConstructDepthMap(const Mat4& m, const Mat4& mvp, Model& model)
 	*/
 }
 
-// ÇåÀízBuffer
+// Clear the z-buffer
 void Screen::ClearZ()
 {
 	for (int i = 0; i < height * width; ++i)zBuffer[i] = -INF;
+	for (int i = 0; i < height * width * kSsaaSampleCount; ++i) {
+		ssaaDepthBuffer[i] = -INF;
+		ssaaColorBuffer[i] = bgColor;
+	}
 }
 
-// ÇåÀídepth
+// Clear the depth map
 void Screen::ClearDepth()
 {
 	for (int i = 0; i < height * width; ++i)depthMap[i] = -INF;
 }
+

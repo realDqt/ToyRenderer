@@ -1,4 +1,4 @@
-#include "Screen.h"
+Ôªø#include "Screen.h"
 #include "Camera.h"
 #include "Mat4.h"
 #include "Global.h"
@@ -7,53 +7,55 @@
 #include <iostream>
 #include <conio.h>
 
-const int SCR_WIDTH = 800;              // ∆¡ƒªøÌ∂»
-const int SCR_HEIGHT = 600;             // ∆¡ƒª∏ﬂ∂»
-const int SCR_DEPTH = 1000;             // ∆¡ƒª…Ó∂»
+const int SCR_WIDTH = 800;              // Screen width
+const int SCR_HEIGHT = 600;             // Screen height
+const int SCR_DEPTH = 1000;             // Screen depth
+const bool ENABLE_SSAA = true;          // Toggle 4x SSAA on or off
 
-float lastX = 0.0f, lastY = 0.0f;       // …œ¥Œ Û±Íµƒ◊¯±Í
-float lastFrame = 0.0f;                 // …œ¥Œ ±º‰
+float lastX = 0.0f, lastY = 0.0f;       // Previous mouse position
+float lastFrame = 0.0f;                 // Previous frame time
 
-const Vec3 position(0.0f, 0.0f, 0.0f);  // …„œÒª˙≥ı ºŒª÷√
-const Vec3 worldUp(0.0f, 1.0f, 0.0f);   //  ¿ΩÁ…œ∑Ω
-float yaw = -90.0f;                     // ∆´∫ΩΩ«
-float pitch = 0.0f;                     // ∏©—ˆΩ«
+const Vec3 position(0.0f, 0.0f, 0.0f);  // Initial camera position
+const Vec3 worldUp(0.0f, 1.0f, 0.0f);   // World up direction
+float yaw = -90.0f;                     // Yaw angle
+float pitch = 0.0f;                     // Pitch angle
 
-Vec3 lightPos(2.0f, 2.0f, 2.0f);        // π‚‘¥Œª÷√
-Vec3 viewPos(0.0f, 0.0f, 0.0f);         // π€≤ÏŒª÷√
+Vec3 lightPos(2.0f, 2.0f, 2.0f);        // Light position
+Vec3 viewPos(0.0f, 0.0f, 0.0f);         // View position
 
 
 int main()
 {
-	// ¥¥Ω®∆¡ƒª
+	// Create the screen
 	Screen screen(SCR_WIDTH, SCR_HEIGHT, SCR_DEPTH, Color(1.0f, 1.0f, 1.0f, 1.0f));
+	screen.SetSSAAEnabled(ENABLE_SSAA);
 	screen.Create();
 
-	// ¥¥Ω®…„œÒª˙
+	// Create the camera
 	Camera camera(position, worldUp, yaw, pitch);
 	std::cout << std::endl;
 
-	// º”‘ÿƒ£–Õ
+	// Load the model
 	const char* filePath = "../models/source/Aiz_v1.0_2.79.obj";
 	Model myModel(filePath);
 
-	// º∆À„modelæÿ’Û
+	// Build the model matrix
 	Vec3 translate(0.0f, -0.8f, -1.0f);
 	Vec3 nx(1.0f, 0.0f, 0.0f), ny(0.0f, 1.0f, 0.0f), nz(0.0f, 0.0f, 1.0f);
 	Vec3 scale(1.0f, 1.0f, 1.0f);
 	Mat4 model = Translate(translate) * Rotate(ny, 0.5f);
 
-	// º∆À„projectionæÿ’Û
+	// Build the projection matrix
 	float fov = Radians(90.0f);
 	float ratio = (float)SCR_WIDTH / SCR_HEIGHT;
 	float zNear = 0.1f;
 	float zFar = 100.0f;
 	Mat4 projection = Perspective(fov, ratio, zNear, zFar);
 	
-	// ¥Ê¥¢º¸≈Ã∫Õ Û±Íµƒ–≈œ¢
+	// Store keyboard and mouse state
 	ExMessage *msg = new ExMessage;
 	
-	// ≥ı ºªØ
+	// Initialize state
 	lastFrame = GetTickCount();
 	lastX = msg->x;
 	lastY = msg->y;
@@ -62,34 +64,34 @@ int main()
 	
 	BeginBatchDraw();
 	
-	// ‰÷»æ—≠ª∑
+	// Render loop
 	while (1) {
 		cleardevice();
 		//peekmessage(msg, EX_MOUSE);
-		// º∆À„deltaTime
+		// Compute delta time
 		float currentFrame = GetTickCount();
 		float deltaTime = currentFrame - lastFrame;
 		lastFrame = currentFrame;
 
-		// º∆À„xOffset∫ÕyOffset
+		// Compute mouse offsets
 		float xOffset = msg->x - lastX;
-		// ◊¢“‚y÷·∑¥◊™
+		// Note that the y axis is flipped
 		float yOffset = lastY - msg->y;
 		lastX = msg->x;
 		lastY = msg->y;
 
-		// º‡Ã˝ Û±Í∫Õº¸≈Ã≤Ÿ◊˜
+		// Handle mouse and keyboard input
 		//camera.Listen(msg, deltaTime, xOffset, yOffset);
 
 		//lightPos = Rotate(ny, 0.3f) * Vec4(lightPos, 0.0f);
 
-		// ππ‘ÏDepthMap
+		// Build the depth map
 		Mat4 view = Camera::LookAt(lightPos, translate, Vec3(0.0f, 1.0f, 0.0f));
 		//Mat4 view(1.0f);
 		Mat4 mvp = projection * view * model;
 		screen.ConstructDepthMap(model, mvp, myModel);
 
-		// ’˝ Ω‰÷»æ
+		// Main render pass
 		view = camera.GetViewMatrix();
 		model = Translate(translate) * Rotate(ny, 0.3f) * Translate(-1.0f * translate) * model;
 		mvp = projection * view * model;
@@ -97,9 +99,9 @@ int main()
 
 		FlushBatchDraw();
 
-		// «Â¿ÌzBuffer
+		// Clear the z-buffer
 		screen.ClearZ();
-		// «Â¿ÌdepthMap
+		// Clear the depth map
 		screen.ClearDepth();
 	}
 	

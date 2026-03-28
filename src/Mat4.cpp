@@ -1,19 +1,19 @@
-#include "Mat4.h"
+ï»¿#include "Mat4.h"
 #include "Global.h"
 #include <assert.h>
 
 
-// Ä¬ÈÏ¹¹Ôìº¯Êı
+// Default constructor
 Mat4::Mat4()
 {
-	// ³õÊ¼»¯ÈİÆ÷´óĞ¡Îª4
+	// Initialize a 4x4 storage container
 	for (int i = 0; i < 4; ++i)data[i].resize(4);
 }
 
-// ¿½±´¹¹Ôìº¯Êı
+// Copy constructor
 Mat4::Mat4(const Mat4& rhs)
 {
-	// ³õÊ¼»¯ÈİÆ÷´óĞ¡Îª4
+	// Initialize a 4x4 storage container
 	for (int i = 0; i < 4; ++i)data[i].resize(4);
 	for (int i = 0; i < 4; ++i) {
 		for (int j = 0; j < 4; ++j) {
@@ -24,7 +24,7 @@ Mat4::Mat4(const Mat4& rhs)
 
 Mat4::Mat4(float value)
 {
-	// ³õÊ¼»¯ÈİÆ÷´óĞ¡Îª4
+	// Initialize a 4x4 storage container
 	for (int i = 0; i < 4; ++i)data[i].resize(4);
 	for (int i = 0; i < 4; ++i) {
 		for (int j = 0; j < 4; ++j) {
@@ -34,10 +34,10 @@ Mat4::Mat4(float value)
 	}
 }
 
-// ×ª»»º¯Êı
+// Conversion constructor
 Mat4::Mat4(const Mat3& rhs)
 {
-	// ³õÊ¼»¯ÈİÆ÷´óĞ¡Îª4
+	// Initialize a 4x4 storage container
 	for (int i = 0; i < 4; ++i)data[i].resize(4);
 	for (int i = 0; i < 3; ++i) {
 		for (int j = 0; j < 3; ++j) {
@@ -94,13 +94,13 @@ Mat4 Mat4::Inverse()const
 		std::cout << std::endl;
 	}
 	*/
-	// ¹¹Ôì°éËæ¾ØÕó
+	// Build the adjugate matrix
 	Mat4 AStar(1.0f);
 	float tem[9] = { 0.0f };
 	for (int i = 0; i < 4; ++i) {
 		for (int j = 0; j < 4; ++j) {
-			// ÇóMji
-			// ¹¹ÔìÈı½×·½Õó
+			// Compute Mji
+			// Build the 3x3 minor matrix
 			int len = 0;
 			//std::cout << "j-i: " << j << "-" << i << std::endl;
 			for (int p = 0; p < 4; ++p) {
@@ -127,18 +127,18 @@ Mat4 Mat4::Inverse()const
 		}
 	}
 	//std::cout << "Inverse Astar: " << std::endl << AStar << std::endl;
-	// Çó¾ØÕóĞĞÁĞÊ½µÄÖµ
+	// Compute the determinant
 	float det = Det();
 	//std::cout << "Inverse det: " << std::endl << det << std::endl;
 	assert(!FloatEqual(det, 0.0f));
-	// ·µ»Ø½á¹û
+	// Return the result
 	return AStar / det;
 }
 
 float Mat4::Det()const
 {
 	float res = 0.0f;
-	// ´æ´¢Ê£ÓàÔªËØ
+	// Store the remaining elements
 	float tem[9] = { 0 };
 	for (int i = 0; i < 4; ++i) {
 		int len = 0;
@@ -148,7 +148,7 @@ float Mat4::Det()const
 				tem[len++] = data[p][q];
 			}
 		}
-		// ¹¹ÔìMat3
+		// Build a Mat3 from the minor
 		Mat3 M(1.0f);
 		for (int k = 0; k < 9; ++k) {
 			M[k / 3][k % 3] = tem[k];

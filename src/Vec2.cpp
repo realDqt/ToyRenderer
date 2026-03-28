@@ -1,6 +1,6 @@
-#include "Vec2.h"
+ï»¿#include "Vec2.h"
 
-// Ä¬ÈÏ¹¹Ôìº¯Êı
+// Default constructor
 Vec2::Vec2()
 {
 	this->x = this->y = 0.0f;
@@ -17,7 +17,7 @@ Vec2::Vec2(float x)
 	this->x = this->y = x;
 }
 
-// ¿½±´¹¹Ôìº¯Êı
+// Copy constructor
 Vec2::Vec2(const Vec2& rhs)
 {
 	this->x = rhs.x;
@@ -65,31 +65,31 @@ const float& Vec2::operator[](int idx)const
 	else return y;
 }
 
-// ÏòÁ¿¼Ó·¨
+// Vector addition
 Vec2 operator+(const Vec2& a, const Vec2& b)
 {
 	Vec2 res(a.X() + b.X(), a.Y() + b.Y());
 	return res;
 }
-// ÏòÁ¿¼õ·¨
+// Vector subtraction
 Vec2 operator-(const Vec2& a, const Vec2& b)
 {
 	Vec2 res(a.X() - b.X(), a.Y() - b.Y());
 	return res;
 }
-// ÏòÁ¿Êı³Ë
+// Scalar multiplication
 Vec2 operator*(float k, const Vec2& v)
 {
 	Vec2 res(k * v.X(), k * v.Y());
 	return res;
 }
-// ÏòÁ¿Êı³ı
+// Scalar division
 Vec2 operator/(const Vec2& v, float k)
 {
 	Vec2 res(v.X() / k, v.Y() / k);
 	return res;
 }
-// Êä³öÔËËã·ûÖØÔØ
+// Stream output operator
 std::ostream& operator<<(std::ostream& out, const Vec2& v)
 {
 	out << v.X() << " " << v.Y();

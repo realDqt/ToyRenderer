@@ -1,8 +1,8 @@
-#include "Camera.h"
+ï»¿#include "Camera.h"
 #include "Global.h"
 #include <iostream>
 
-// Ä¬ÈÏ¹¹Ôìº¯Êý
+// Default constructor
 Camera::Camera()
 {
 	position = Vec3(0.0f);
@@ -51,7 +51,7 @@ Mat4 Camera::GetViewMatrix(bool print)
 
 Mat4 Camera::LookAt(const Vec3& position, const Vec3& center, const Vec3& worldUp)
 {
-	// ½¨Á¢Ïà»ú×ø±êÏµ
+	// Build the camera basis
 	Vec3 zAxis = Normalize(position - center);
 	Vec3 xAxis = Normalize(Cross(worldUp, zAxis));
 	Vec3 yAxis = Cross(zAxis, xAxis);
@@ -61,21 +61,21 @@ Mat4 Camera::LookAt(const Vec3& position, const Vec3& center, const Vec3& worldU
 	//std::cout << yAxis << std::endl;
 	//std::cout << zAxis << std::endl;
 
-	// ¼ÆËãÐý×ª¾ØÕó
+	// Build the rotation matrix
 	Mat4 rotate(1.0f);
 	for (int i = 0; i < 3; ++i)rotate[0][i] = xAxis[i];
 	for (int i = 0; i < 3; ++i)rotate[1][i] = yAxis[i];
 	for (int i = 0; i < 3; ++i)rotate[2][i] = zAxis[i];
 
-	// ¼ÆËãÆ½ÒÆ¾ØÕó
+	// Build the translation matrix
 	Mat4 translate(1.0f);
 	for (int i = 0; i < 3; ++i)translate[i][3] = -position[i];
 
-	// ÏÈÆ½ÒÆºóÐý×ª
+	// Apply translation before rotation
 	return rotate * translate;
 }
 
-// ¸ù¾ÝyawºÍpitch£¬¸üÐÂfront¡¢upºÍright
+// Update front, up, and right from yaw and pitch
 void Camera::UpdateCameraVectors()
 {
 	float p = Radians(pitch);
@@ -87,7 +87,7 @@ void Camera::UpdateCameraVectors()
 	up = Cross(right, front);
 }
 
-// ´¦Àí¼üÅÌ°´ÏÂ
+// Process keyboard input
 void Camera::ProcessKeyboard(ExMessage* msg, float deltaTime)
 {
 	if (peekmessage(msg, EX_KEY)) {
@@ -95,22 +95,22 @@ void Camera::ProcessKeyboard(ExMessage* msg, float deltaTime)
 		float distance = 0.125f * deltaTime;
 		switch(msg->vkcode) {
 		case 0x57:
-			// °´ÏÂW
+			// W key
 			std::cout << "W is pressed!" << std::endl;
 			position = position +  distance * front;
 			break;
 		case 0x53:
-			// °´ÏÂS
+			// S key
 			std::cout << "S is pressed!" << std::endl;
 			position = position - distance * front;
 			break;
 		case 0x41:
-			// °´ÏÂA
+			// A key
 			std::cout << "A is pressed!" << std::endl;
 			position = position - distance * right;
 			break;
 		case 0x44:
-			// °´ÏÂD
+			// D key
 			std::cout << "D is pressed!" << std::endl;
 			position = position + distance * right;
 			break;
@@ -121,7 +121,7 @@ void Camera::ProcessKeyboard(ExMessage* msg, float deltaTime)
 	}
 }
 
-// ´¦ÀíÊó±êÒÆ¶¯
+// Process mouse movement
 void Camera::ProcessMouseMovement(float xOffset, float yOffset)
 {
 	xOffset *= 0.1f;
@@ -135,26 +135,26 @@ void Camera::ProcessMouseMovement(float xOffset, float yOffset)
 	UpdateCameraVectors();
 }
 
-// ¼àÌýÍâ²¿ÊÂ¼þ
+// Handle external input events
 void Camera::Listen(ExMessage* msg, float deltaTime, float xOffset, float yOffset)
 {
 	ProcessMouseMovement(xOffset, yOffset);
 	ProcessKeyboard(msg, deltaTime);
 }
 
-// »ñÈ¡ÉãÏñ»úÎ»ÖÃ
+// Get the camera position
 Vec3& Camera::GetPosition()
 {
 	return position;
 }
 
-// »ñÈ¡ÉãÏñ»úÎ»ÖÃ
+// Get the camera position
 const Vec3& Camera::GetPosition()const
 {
 	return position;
 }
 
-// »ñÈ¡ÉãÏñ»úÇ°·½
+// Get the camera forward direction
 const Vec3& Camera::GetFront()const
 {
 	return front;

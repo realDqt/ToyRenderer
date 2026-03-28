@@ -1,12 +1,12 @@
-#include "Vec3.h"
+ï»¿#include "Vec3.h"
 
-// Ä¬ÈÏ¹¹Ôìº¯Êı
+// Default constructor
 Vec3::Vec3()
 {
 	this->x = this->y = this->z = 0.0f;
 }
 
-// ×ª»»º¯Êı
+// Conversion constructor
 Vec3::Vec3(const Vec4& rhs)
 {
 	this->x = rhs.X();
@@ -26,7 +26,7 @@ Vec3::Vec3(float x)
 	this->x = this->y = this->z = x;
 }
 
-// ¿½±´¹¹Ôìº¯Êı
+// Copy constructor
 Vec3::Vec3(const Vec3& rhs)
 {
 	this->x = rhs.x;
@@ -86,25 +86,25 @@ const float& Vec3::operator[](int idx)const
 	else return z;
 }
 
-// ÏòÁ¿¼Ó·¨
+// Vector addition
 Vec3 operator+(const Vec3& a, const Vec3& b)
 {
 	Vec3 res(a.X() + b.X(), a.Y() + b.Y(), a.Z() + b.Z());
 	return res;
 }
-// ÏòÁ¿¼õ·¨
+// Vector subtraction
 Vec3 operator-(const Vec3& a, const Vec3& b)
 {
 	Vec3 res(a.X() - b.X(), a.Y() - b.Y(), a.Z() - b.Z());
 	return res;
 }
-// ÏòÁ¿Êı³Ë
+// Scalar multiplication
 Vec3 operator*(float k, const Vec3& v)
 {
 	Vec3 res(k * v.X(), k * v.Y(), k * v.Z());
 	return res;
 }
-// ÏòÁ¿Êı³ı
+// Scalar division
 Vec3 operator/(const Vec3& v, float k)
 {
 	Vec3 res(v.X() / k, v.Y() / k, v.Z() / k);

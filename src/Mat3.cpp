@@ -1,17 +1,17 @@
-#include "Mat3.h"
+ï»¿#include "Mat3.h"
 #include <assert.h>
 
-// Ä¬ÈÏ¹¹Ôìº¯Êı
+// Default constructor
 Mat3::Mat3()
 {
-	// ³õÊ¼»¯ÈİÆ÷´óĞ¡Îª3
+	// Initialize a 3x3 storage container
 	for (int i = 0; i < 3; ++i)data[i].resize(3);
 }
 
-// ¿½±´¹¹Ôìº¯Êı
+// Copy constructor
 Mat3::Mat3(const Mat3& rhs)
 {
-	// ³õÊ¼»¯ÈİÆ÷´óĞ¡Îª3
+	// Initialize a 3x3 storage container
 	for (int i = 0; i < 3; ++i)data[i].resize(3);
 	for (int i = 0; i < 3; ++i) {
 		for (int j = 0; j < 3; ++j) {
@@ -22,7 +22,7 @@ Mat3::Mat3(const Mat3& rhs)
 
 Mat3::Mat3(float value)
 {
-	// ³õÊ¼»¯ÈİÆ÷´óĞ¡Îª3
+	// Initialize a 3x3 storage container
 	for (int i = 0; i < 3; ++i)data[i].resize(3);
 	for (int i = 0; i < 3; ++i) {
 		for (int j = 0; j < 3; ++j) {
@@ -32,10 +32,10 @@ Mat3::Mat3(float value)
 	}
 }
 
-// ×ª»»º¯Êı
+// Conversion constructor
 Mat3::Mat3(const Mat4& rhs)
 {
-	// ³õÊ¼»¯ÈİÆ÷´óĞ¡Îª3
+	// Initialize a 3x3 storage container
 	for (int i = 0; i < 3; ++i)data[i].resize(3);
 	for (int i = 0; i < 3; ++i) {
 		for (int j = 0; j < 3; ++j) {
@@ -89,13 +89,13 @@ float Mat3::Det()const
 
 Mat3 Mat3::Inverse()const
 {
-	// Çó°éËæ¾ØÕó
+	// Build the adjugate matrix
 	Mat3 AStar(1.0f);
 	float tem[4] = { 0.0f };
 	for (int i = 0; i < 3; ++i) {
 		for (int j = 0; j < 3; ++j) {
-			// ¼ÆËãMji
-			// ½«MjiÔªËØÒÆÈëtemÊı×é
+			// Compute minor Mji
+			// Copy the remaining elements into the temporary buffer
 			int len = 0;
 			for (int p = 0; p < 3; ++p) {
 				for (int q = 0; q < 3; ++q) {
@@ -107,10 +107,10 @@ Mat3 Mat3::Inverse()const
 			AStar[i][j] = (i + j) & 1 ? -Mji : Mji;
 		}
 	}
-	// Çó¾ØÕóµÄĞĞÁĞÊ½µÄÖµ
+	// Compute the determinant
 	float det = Det();
 	assert(det != 0);
-	// ·µ»Ø½á¹û
+	// Return the result
 	return AStar / det;
 }
 

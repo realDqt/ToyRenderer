@@ -1,4 +1,4 @@
-#pragma once
+ï»¿#pragma once
 #define NOMINMAX
 #include "Vec3.h"
 #include "Vec4.h"
@@ -16,46 +16,46 @@
 const float INF = 3.40282e+38;
 const float PI = 3.1415926f;
 
-// ÅÐ¶ÏkÊÇ·ñÊôÓÚÇø¼ä[min, max]
+// Check whether k is in the range [min, max]
 bool InRange(float k, float min, float max);
 
-// ÅÐ¶ÏkÊÇ·ñÊôÓÚÇø¼ä[min, max]
+// Check whether k is in the range [min, max]
 bool InRange(int k, int min, int max);
 
-// ¼ÆËãVec3ÄÚ»ý
+// Compute the dot product of two Vec3 values
 float Dot(const Vec3& a, const Vec3& b);
 
-// ¼ÆËãVec3Íâ»ý
+// Compute the cross product of two Vec3 values
 Vec3 Cross(const Vec3& a, const Vec3& b);
 
-// ¼ÆËãVec3³¤¶È
+// Compute the length of a Vec3
 float Length(const Vec3& v);
 
-// ±ê×¼»¯Vec3
+// Normalize a Vec3
 Vec3 Normalize(const Vec3& v);
 
-// ½Ç¶È×ª»¡¶È
+// Convert degrees to radians
 float Radians(float angle);
 
-// ÅÐ¶ÏÁ½¸ö¸¡µãÊýÏàµÈ
+// Compare two floating-point values for near-equality
 bool FloatEqual(float a, float b);
 
-// Æ½ÒÆº¯Êý
+// Translation helper
 Mat4 Translate(const Vec3& translate);
 
-// Ðý×ªº¯Êý
+// Rotation helper
 Mat4 Rotate(const Vec3& n, float alpha);
 
-// Ëõ·Åº¯Êý
+// Scaling helper
 Mat4 Scale(const Vec3& scale);
 
-// Õý½»Í¶Ó°
+// Orthographic projection helper
 Mat4 Ortho(float l, float r, float t, float b, float n, float f);
 
-// Í¸ÊÓÍ¶Ó°
+// Perspective projection helper
 Mat4 Perspective(float fov, float ratio, float zNear, float zFar);
 
-// Mat4¡ÁVec4
+// Multiply a Mat4 by a Vec4
 Vec4 operator* (const Mat4& M, const Vec4& v);
 
 // Blin-Phong
@@ -64,6 +64,6 @@ Color BlinPhong(const Mat4& normalMatrix, Image* diffuseMap, Triangle& triangle,
 // Blin-Phong with ShadowMap
 Color BlinPhongShadow(const Screen& screen, const Mat4& projection, const Mat4& normalMatrix, Image* diffuseMap, Triangle& triangle, const Vec3& bary, const Vec3& lightPos, const Vec3& viewPos);
 
-// max
+// Maximum helper
 float Max(float a, float b);
 
